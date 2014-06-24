@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+
+import sys
+import os
+from ctcrunner import *
+import subprocess as sb
+import time
+
+class MyTCRunner (CTCRunner):
+    def step1Hook(self,step):
+        print step
+        cmd1 = "adb shell pm clear com.google.android.GoogleCamera"
+        cmd2 = "adb shell rm -r /sdcard/DCIM/Camera/*"
+        cmd3 = "adb shell am broadcast -a android.intent.action.MEDIA_MOUNTED -d file:///sdcard"
+        p1 = sb.Popen(cmd1,shell=True)
+        p1.wait()
+        P2 = sb.Popen(cmd2,shell=True)
+        time.sleep(2)
+        P3 = sb.Popen(cmd3,shell=True)
+        time.sleep(5)
+        ret, nextstep = self.ExecStep(step)
+        
+        return ret, nextstep
+
+    def step4Hook(self, step):
+        # Utilizing uiautomator to scroll app gallery to view contains "Chrome" app
+        print step
+        cmd = "adb shell ls /mnt/sdcard/DCIM/Camera/  | grep IMG | wc -l"
+        p1 = sb.Popen(cmd, stdout=sb.PIPE, shell=True)
+        p1.wait()
+        out=p1.stdout.read().strip()
+        print out
+        try:
+            old = int(out)
+        except:
+            return False, None
+
+        ret, nextstep = self.ExecStep(step)
+        
+        print "@@@@@",ret
+        time.sleep(6)
+        if ret>=0:
+            
+            p2 = sb.Popen(cmd, stdout=sb.PIPE, shell=True)
+            p2.wait()
+            out=p2.stdout.read().strip()
+            print out
+            try:
+                new = int(out)
+            except:
+                return False, None
+            ret = True if (new - old -1) ==0 else False
+        print "##############", new, old, ret, nextstep
+        return ret, nextstep
+
+    def step5Hook(self,step):
+        print step
+        cmd1 = "adb shell input swipe 1180 1000 5 1000 3000"
+        p1 = sb.Popen(cmd1,shell=True)
+        p1.wait()
+
+        ret, nextstep = self.ExecStep(step)
+        
+        return ret, nextstep
+
+def run(igaspyproxy):
+    mytcrunner = MyTCRunner(igaspyproxy)
+    return mytcrunner.Run()
